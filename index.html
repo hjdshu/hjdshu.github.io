@@ -85,28 +85,29 @@
     <div class="article-entry" itemprop="articleBody">
       
         <h4 id="1-场景"><a href="#1-场景" class="headerlink" title="1. 场景"></a>1. 场景</h4><ul>
-<li><p>场景是我们给外部小程序导流量，发现我们出去的量跟对方拿到的量差异很大, 对方称在【app onshow】里上报的事件统计。 </p>
+<li><p>场景是给外部小程序导流量，发现我们出去的量(点击事件UV)跟对方拿到的量(来源统计UV)差异很大, 对方称在【app onShow】里上报的事件统计。 </p>
 </li>
-<li><p>我们自己的事件统计没有问题，跟我们后台带userid的用户人数对的上。</p>
+<li><p>经过对比数据，我们自己服务统计的用户跟微信统计的事件数据一致(点击事件)。</p>
 </li>
-<li><p>测试使用微信API上报事件来源统计:  如果query 里面有关键字(custom_source的值)：【 app:onShow】上报统计量(uv)为A， 跟 page/index/index 【onReady】 上报统计量(uv)定义为B,  结果是A*4 ~= B </p>
+<li><p>自测微信API上报事件来源统计:  APP生命周期上报【 app:onShow】上报统计量(uv)为A， 跟 页面的生命周期 (测试页面为首页)) 【page: onReady】 上报统计量(uv)定义为B,  如果按期预期A应该约等于B， 但是实测 B ~= 4*A， 数据相差4倍。</p>
 </li>
 </ul>
 <h4 id="2-分析"><a href="#2-分析" class="headerlink" title="2. 分析"></a>2. 分析</h4><ul>
-<li><p>分析：为何这么大差距?  onshow事件没有被触发？ api没上报成功？</p>
+<li><p>分析：为何这么大差距?  onshow事件没有被触发？ 微信的api没上报成功？</p>
 </li>
-<li><p>在同样的两个位置加上了阿拉丁的事件分析:  结果还是 A*3.5 = B</p>
+<li><p>在同样的两个位置加上了阿拉丁的事件分析:  结果还是 A(阿拉丁app onShow上报的事件统计)*3.5 = B(阿拉丁page onReady上报的事件统计)</p>
 </li>
-<li><p>后来发现线上错误日志：app.onshow :  app.aldstat.sendEvent(阿拉丁的统计方法) 错误,  怀疑app.aldstat在apponshow的时候还没初始化, 于是</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">setTimeout(() =&gt; &#123;</span><br><span class="line">   let app = getApp()</span><br><span class="line">   app.aldstat.sendEvent(&apos;普通来源show-&apos; + sourceQuery, &apos;来源&apos;)</span><br><span class="line"> &#125;, 1)</span><br></pre></td></tr></table></figure>
+<li><p>发现线上错误日志：app:onshow :  app.aldstat.sendEvent(阿拉丁的统计方法) 错误,  怀疑app.aldstat在apponshow的时候还没初始化, 于是做了一个延迟上报处理</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">setTimeout(() =&gt; &#123;</span><br><span class="line">   let app = getApp()</span><br><span class="line">   app.aldstat.sendEvent(&apos;普通来源show-&apos; + sourceQuery, &apos;来源&apos;)</span><br><span class="line"> &#125;, 100)</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>然后神奇的事情发生了，同样的位置 A~=B。 然而微信api上报还是差4倍(没有加异步setTimeout)，证明微信自定义分析api上报这个方法在app.onshow事件中直接调用（wx.reportAnalytics）, 存在数据遗漏问题, 怀疑wx.reportAnalytics可能也存在初始化问题，或许可以也要setTimeout做个延迟上报操作。</p>
 </li>
 </ul>
 <h4 id="3-解决方案"><a href="#3-解决方案" class="headerlink" title="3. 解决方案"></a>3. 解决方案</h4><ul>
 <li>经过验证，困扰许久的问题，解决了。另外阿拉丁数据延迟俩小时。</li>
+<li>延迟1秒上报数据为确保数据更加准确<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">onShow (options) &#123;</span><br><span class="line">  let sourceQuery = options.query.custom_source</span><br><span class="line">  if (sourceQuery &amp;&amp; sourceQuery !== &apos;undefined&apos;) &#123;</span><br><span class="line">    setTimeout(() =&gt; &#123;</span><br><span class="line">      // 微信后台统计</span><br><span class="line">      wx.reportAnalytics(&apos;track_source&apos;, &#123;</span><br><span class="line">        source: sourceQuery</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;, 1000)</span><br><span class="line">    setTimeout(() =&gt; &#123;</span><br><span class="line">      // 阿拉丁统计</span><br><span class="line">      let app = getApp()</span><br><span class="line">      app.aldstat.sendEvent(&apos;普通来源-&apos; + sourceQuery, &apos;来源&apos;)</span><br><span class="line">    &#125;, 1000)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
 </ul>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">onShow (options) &#123;</span><br><span class="line">  let sourceQuery = options.query.custom_source</span><br><span class="line">  if (sourceQuery &amp;&amp; sourceQuery !== &apos;undefined&apos;) &#123;</span><br><span class="line">    setTimeout(() =&gt; &#123;</span><br><span class="line">      // 微信后台统计</span><br><span class="line">      wx.reportAnalytics(&apos;track_source&apos;, &#123;</span><br><span class="line">        source: sourceQuery</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;, 2000)</span><br><span class="line">    setTimeout(() =&gt; &#123;</span><br><span class="line">      // 阿拉丁统计</span><br><span class="line">      let app = getApp()</span><br><span class="line">      app.aldstat.sendEvent(&apos;普通来源-&apos; + sourceQuery, &apos;来源&apos;)</span><br><span class="line">    &#125;, 50)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
       
     </div>
