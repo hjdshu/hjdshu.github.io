@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang=>
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+  
+    <link rel="icon" href="/favicon.ico">
+  
+    
+  <title>小程序爬坑-图片生成 | ForMINI-各种疑难杂症</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/lib/jquery.fancybox.min.css">
+  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<body>
+  <header>
+  <div class="header-container">
+    <a class='logo' href="/">
+      <span>ForMINI-各种疑难杂症</span>
+    </a>
+    <ul class="right-header">
+      
+        <li class="nav-item">
+          
+            <a href="/" class="item-link">首页</a>
+          
+        </li>
+      
+        <li class="nav-item">
+          
+            <a href="/about" class="item-link">关于</a>
+          
+        </li>
+      
+        <li class="nav-item">
+          
+            <a href="/archives" class="item-link">归档</a>
+          
+        </li>
+      
+        <li class="nav-item">
+          
+            <a href="/tags" class="item-link">标签</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  <main id='post'>
+  <div class="content">
+    <article>
+        <section class="content markdown-body">
+          <h1>小程序爬坑-图片生成</h1>
+          <div class='post-meta'>
+            <i class="fa fa-calendar" aria-hidden="true"></i> <time>2018/08/08</time>
+            
+            
+              | 
+                  <i class="fa fa-tag" aria-hidden="true"></i>
+                
+               
+  <a href="/tags/#小程序" class='tag'>小程序</a>
+
+
+            
+          </div>
+          <p>图片生成，这个业务是小程序非常常见的需求了，但是根据不同的场景，往往都有会不同的解决方案</p>
+<h3 id="客户端-利用canvas生成"><a href="#客户端-利用canvas生成" class="headerlink" title="客户端-利用canvas生成"></a>客户端-利用canvas生成</h3><blockquote>
+<p>小程序的canvas原生能力跟web的canvas不一样，小程序的canvas提供的api有限，比如计算文字宽度的api是没有的, 官方文档地址:  <a href="https://developers.weixin.qq.com/miniprogram/dev/component/canvas.html#canvas" target="_blank" rel="noopener">https://developers.weixin.qq.com/miniprogram/dev/component/canvas.html#canvas</a></p>
+</blockquote>
+<h4 id="小程序canvas的绘制注意事项"><a href="#小程序canvas的绘制注意事项" class="headerlink" title="小程序canvas的绘制注意事项"></a>小程序canvas的绘制注意事项</h4><ol>
+<li><p>适配: 绘制图片之前，先要搞清楚当前机器的真实尺寸，计算出单位标准</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">//获取当前机器的尺寸</span><br><span class="line">let imageWidth = wx.getSystemInfoSync().windowWidth </span><br><span class="line">let bil = imageWidth / 375 //拿到单位bil</span><br><span class="line">//根据这个单位来决定画布元素的大小</span><br><span class="line">ctx.drawImage(img_src, 0, 0, 340 * bil, 290 * bil) </span><br><span class="line">//字体大小也是这样</span><br><span class="line">ctx.setFontSize(11 * bil) </span><br><span class="line">ctx.setFillStyle(&apos;rgba(131,131,157,1)&apos;)</span><br><span class="line">ctx.fillText(&apos;长按识别小程序码&apos;, 179 * bil, 330 * bil)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>cx.drawImage<br>小程序里没有跨域问题，但是ctx.drawImage(imgsrc, x, y, w, h), imgsrc必须为图片的本地路径，当服务器给你一个远程地址的时候，必须使用 wx.downloadFile, 拿到res.tempFilePath，才能绘制</p>
+</li>
+</ol>
+<h3 id="服务器生成"><a href="#服务器生成" class="headerlink" title="服务器生成"></a>服务器生成</h3><blockquote>
+<p>当绘制的精确度要求很高，图片的内容复杂一些，而由于各种机型对于canvas的支持都有差异的时候，这个时候用服务端来生成或许是一个不错的选择。</p>
+</blockquote>
+
+        </section>
+    </article>
+    
+        <!-- disqus 评论框 start -->
+        <div class="comment">
+            <div id="disqus_thread" class="disqus-thread">
+              <i>Loading comments box needs to over the wall</i>
+            </div>
+        </div>
+        <!-- disqus 评论框 end -->
+    
+    
+        <!-- livere 评论框 start -->
+        <div class="comment">
+            <div id="lv-container" data-id="city" data-uid="your_livere_uid"></div>
+        </div>
+        <!-- livere 评论框 end -->
+        
+  </div>
+  <aside>
+    
+    <div class="toc-container">
+        <h1>目录</h1>
+        <div class="content">
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#客户端-利用canvas生成"><span class="toc-number">1.</span> <span class="toc-text">客户端-利用canvas生成</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#小程序canvas的绘制注意事项"><span class="toc-number">1.1.</span> <span class="toc-text">小程序canvas的绘制注意事项</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务器生成"><span class="toc-number">2.</span> <span class="toc-text">服务器生成</span></a></li></ol>
+        </div>
+    </div>
+    
+  </aside>
+</main>
+
+<!-- disqus 公共JS代码 -->
+<script type="text/javascript">
+  /* * * CONFIGURATION VARIABLES * * */
+  var disqus_shortname = "your_disqus_shortname";
+  var disqus_identifier = "https://hjdshu.github.io/2018/08/08/mini-canvas/";
+  var disqus_url = "https://hjdshu.github.io/2018/08/08/mini-canvas/";
+
+  isAgent(getDisqus)
+
+  // determine user agent in China
+  function isAgent(cb) {
+    var url = '//graph.facebook.com/feed?callback=h';
+    var xhr = new XMLHttpRequest();
+    var called = false;
+    xhr.open('GET', url);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+      called = true;
+      cb(true);
+      }
+    };
+    xhr.send();
+    // timeout 1s, this facebook API is very fast.
+    setTimeout(function() {
+      if (!called) {
+      xhr.abort();
+      cb(false)
+      }
+    }, 1000);
+  }
+
+  function getDisqus(isAgent) {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; 
+    dsq.async = true
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq)
+  }
+</script>
+<!-- disqus 公共JS代码 end -->
+
+
+<script type="text/javascript">
+  (function(d, s) {
+      var j, e = d.getElementsByTagName(s)[0];
+
+      if (typeof LivereTower === 'function') { return; }
+
+      j = d.createElement(s);
+      j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+      j.async = true;
+
+      e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+</script>
+
+
+  <footer>
+  <div class="copyright">
+    <div>
+      &copy; 2018 | Powered by <a href="https://hexo.io" target="_blank">Hexo</a>&nbsp
+    </div>
+    <div>
+      Theme by <a href="https://github.com/lewis-geek/hexo-theme-Aath" target="_blank">Aath</a>
+    </div>
+  </div>
+</footer>
+
+
+<script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+<script src="/lib/in-view.min.js"></script>
+<script src="/lib/lodash.min.js"></script>
+<script>
+  var isDown = true
+  var oldY = 0
+  inView.offset(50)
+
+  document.body.addEventListener('touchstart', function(){});
+  
+  window.addEventListener('scroll', _.throttle(e => {
+    var currentY = window.scrollY
+    if((oldY - currentY) < 0) {
+      isDown = true
+    } else {
+      isDown = false
+    }
+    oldY = currentY
+  }, 250))
+
+  $("article img").each(function() {
+      var strA = "<a data-fancybox='gallery' href='" + this.src + "'></a>";
+      $(this).wrapAll(strA);
+  });
+
+  $('.toc-link').each(function() {
+      var href = $(this).attr("href");
+      
+      inView(href).on('exit', () => {
+        if (isDown) {
+          handleActive(href)
+        }
+      })
+
+      inView(href).on('enter', () => {
+        if (!isDown) {
+          handleActive(href)
+        }
+      })
+
+      this.onclick = function(e) {
+        var pos = $(href).offset().top - 10;
+        $("html,body").animate({scrollTop: pos}, 300);
+        setTimeout(() => {
+          handleActive(href)
+        }, 350)
+        return false
+      }
+  })
+
+  function handleActive(href) {
+    document.querySelectorAll('.toc-link').forEach(elm => {
+      elm.classList.remove('active')
+    })
+    document.querySelector(".toc [href='"+ href +"']").classList.add('active')
+  }
+</script>
+<script src="/lib/jquery.fancybox.min.js"></script>
+
+
+</body>
+</html>
