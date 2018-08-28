@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang=>
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+  
+    <link rel="icon" href="/favicon.ico">
+  
+    
+  <title>小程序一般登录流程 | ForMINI-各种疑难杂症</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/lib/jquery.fancybox.min.css">
+  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<body>
+  <header>
+  <div class="header-container">
+    <a class='logo' href="/">
+      <span>ForMINI-各种疑难杂症</span>
+    </a>
+    <ul class="right-header">
+      
+        <li class="nav-item">
+          
+            <a href="/" class="item-link">首页</a>
+          
+        </li>
+      
+        <li class="nav-item">
+          
+            <a href="/about" class="item-link">关于</a>
+          
+        </li>
+      
+        <li class="nav-item">
+          
+            <a href="/archives" class="item-link">归档</a>
+          
+        </li>
+      
+        <li class="nav-item">
+          
+            <a href="/tags" class="item-link">标签</a>
+          
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  <main id='post'>
+  <div class="content">
+    <article>
+        <section class="content markdown-body">
+          <h1>小程序一般登录流程</h1>
+          <div class='post-meta'>
+            <i class="fa fa-calendar" aria-hidden="true"></i> <time>2018/08/23</time>
+            
+            
+              | 
+                  <i class="fa fa-tag" aria-hidden="true"></i>
+                
+               
+  <a href="/tags/#小程序" class='tag'>小程序</a>
+
+
+            
+          </div>
+          <h3 id="一、小程序原生能力"><a href="#一、小程序原生能力" class="headerlink" title="一、小程序原生能力"></a>一、小程序原生能力</h3><p>微信利用了自己的账号系统，给每个小程序主体提供了拿到用户的唯一识别码: open_id<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">wx.login(&#123;</span><br><span class="line">  success: function (res) &#123;</span><br><span class="line">    if (res.code) &#123;</span><br><span class="line">      callback(null, res.code)</span><br><span class="line">      // 拿到微信给的临时登录凭证code, 用这个code可以去服务器换成open_id</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">      callback(&apos;登陆失败!&apos; + res.errMsg)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure></p>
+<p>code换open_id必须通过服务器处理，需要使用到app_secret, 文档地址：<br><a href="https://developers.weixin.qq.com/miniprogram/dev/api/signature.html" target="_blank" rel="noopener">https://developers.weixin.qq.com/miniprogram/dev/api/signature.html</a></p>
+<h3 id="二、一般登录流程"><a href="#二、一般登录流程" class="headerlink" title="二、一般登录流程"></a>二、一般登录流程</h3><ol>
+<li>服务器拿到code之后，去服务器换成open_id和token，然后会给一个token给前端, 前端通常会将此token缓存在storage里</li>
+<li><p>登录完成之后执行待完成的需要登录操作的函数</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">let login = () =&gt; &#123;</span><br><span class="line">  wx.request(&#123;</span><br><span class="line">    url: &apos;login&apos;,</span><br><span class="line">    code: code,</span><br><span class="line">    success: (data) =&gt; &#123;</span><br><span class="line">      let token = data.token</span><br><span class="line">      wx.setStorageSync(&apos;token&apos;, token)</span><br><span class="line">      // 执行队列里的等待函数</span><br><span class="line">      store.state.ajaxList.forEach((item) =&gt; &#123;</span><br><span class="line">        item()</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>根据业务具体情况，前端在业务请求里里带上token完成</p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">wx.request(&#123;</span><br><span class="line">  url: requestUrl,</span><br><span class="line">  data: data,</span><br><span class="line">  method: method,</span><br><span class="line">  header: &#123;</span><br><span class="line">    &apos;Authorization&apos;: `Bearer $&#123;token&#125;`</span><br><span class="line">  &#125;...</span><br></pre></td></tr></table></figure>
+<h3 id="三、登录状态保持，重试"><a href="#三、登录状态保持，重试" class="headerlink" title="三、登录状态保持，重试"></a>三、登录状态保持，重试</h3><p>逻辑通常是当我们认为登录过期时，执行登录操作，并将待完成的操作加入队列<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">let Rq = function (param, method, url, callback) &#123;</span><br><span class="line">  let token = getStorageSync(&apos;token&apos;, token)</span><br><span class="line">  let makeRequest = () = &gt; &#123;</span><br><span class="line">    wx.request(&#123;</span><br><span class="line">      url: url,</span><br><span class="line">      data: param,</span><br><span class="line">      method: method,</span><br><span class="line">      header: &#123;</span><br><span class="line">        &apos;Authorization&apos;: `Bearer $&#123;token&#125;`</span><br><span class="line">      &#125;,</span><br><span class="line">      complete: function (res) &#123;</span><br><span class="line">        if (String(res.statusCode) === &apos;401&apos;) &#123;</span><br><span class="line">          // 往队列里丢待执行的函数</span><br><span class="line">          store.state.ajaxList.push(makeNowRequest)</span><br><span class="line">          login()</span><br><span class="line">          return</span><br><span class="line">        &#125;</span><br><span class="line">        if (String(res.statusCode) !== &apos;200&apos;) &#123;</span><br><span class="line">          tips(res.data.err)</span><br><span class="line">          return</span><br><span class="line">        &#125;</span><br><span class="line">        callback(null, res.data)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line">  makeRequest()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+
+        </section>
+    </article>
+    
+        <!-- disqus 评论框 start -->
+        <div class="comment">
+            <div id="disqus_thread" class="disqus-thread">
+              <i>Loading comments box needs to over the wall</i>
+            </div>
+        </div>
+        <!-- disqus 评论框 end -->
+    
+    
+        <!-- livere 评论框 start -->
+        <div class="comment">
+            <div id="lv-container" data-id="city" data-uid="your_livere_uid"></div>
+        </div>
+        <!-- livere 评论框 end -->
+        
+  </div>
+  <aside>
+    
+    <div class="toc-container">
+        <h1>目录</h1>
+        <div class="content">
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#一、小程序原生能力"><span class="toc-number">1.</span> <span class="toc-text">一、小程序原生能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二、一般登录流程"><span class="toc-number">2.</span> <span class="toc-text">二、一般登录流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#三、登录状态保持，重试"><span class="toc-number">3.</span> <span class="toc-text">三、登录状态保持，重试</span></a></li></ol>
+        </div>
+    </div>
+    
+  </aside>
+</main>
+
+<!-- disqus 公共JS代码 -->
+<script type="text/javascript">
+  /* * * CONFIGURATION VARIABLES * * */
+  var disqus_shortname = "your_disqus_shortname";
+  var disqus_identifier = "https://hjdshu.github.io/2018/08/23/mini-login/";
+  var disqus_url = "https://hjdshu.github.io/2018/08/23/mini-login/";
+
+  isAgent(getDisqus)
+
+  // determine user agent in China
+  function isAgent(cb) {
+    var url = '//graph.facebook.com/feed?callback=h';
+    var xhr = new XMLHttpRequest();
+    var called = false;
+    xhr.open('GET', url);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+      called = true;
+      cb(true);
+      }
+    };
+    xhr.send();
+    // timeout 1s, this facebook API is very fast.
+    setTimeout(function() {
+      if (!called) {
+      xhr.abort();
+      cb(false)
+      }
+    }, 1000);
+  }
+
+  function getDisqus(isAgent) {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; 
+    dsq.async = true
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq)
+  }
+</script>
+<!-- disqus 公共JS代码 end -->
+
+
+<script type="text/javascript">
+  (function(d, s) {
+      var j, e = d.getElementsByTagName(s)[0];
+
+      if (typeof LivereTower === 'function') { return; }
+
+      j = d.createElement(s);
+      j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+      j.async = true;
+
+      e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+</script>
+
+
+  <footer>
+  <div class="copyright">
+    <div>
+      &copy; 2018 | Powered by <a href="https://hexo.io" target="_blank">Hexo</a>&nbsp
+    </div>
+    <div>
+      Theme by <a href="https://github.com/lewis-geek/hexo-theme-Aath" target="_blank">Aath</a>
+    </div>
+  </div>
+</footer>
+
+
+<script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+<script src="/lib/in-view.min.js"></script>
+<script src="/lib/lodash.min.js"></script>
+<script>
+  var isDown = true
+  var oldY = 0
+  inView.offset(50)
+
+  document.body.addEventListener('touchstart', function(){});
+  
+  window.addEventListener('scroll', _.throttle(e => {
+    var currentY = window.scrollY
+    if((oldY - currentY) < 0) {
+      isDown = true
+    } else {
+      isDown = false
+    }
+    oldY = currentY
+  }, 250))
+
+  $("article img").each(function() {
+      var strA = "<a data-fancybox='gallery' href='" + this.src + "'></a>";
+      $(this).wrapAll(strA);
+  });
+
+  $('.toc-link').each(function() {
+      var href = $(this).attr("href");
+      
+      inView(href).on('exit', () => {
+        if (isDown) {
+          handleActive(href)
+        }
+      })
+
+      inView(href).on('enter', () => {
+        if (!isDown) {
+          handleActive(href)
+        }
+      })
+
+      this.onclick = function(e) {
+        var pos = $(href).offset().top - 10;
+        $("html,body").animate({scrollTop: pos}, 300);
+        setTimeout(() => {
+          handleActive(href)
+        }, 350)
+        return false
+      }
+  })
+
+  function handleActive(href) {
+    document.querySelectorAll('.toc-link').forEach(elm => {
+      elm.classList.remove('active')
+    })
+    document.querySelector(".toc [href='"+ href +"']").classList.add('active')
+  }
+</script>
+<script src="/lib/jquery.fancybox.min.js"></script>
+
+
+</body>
+</html>
